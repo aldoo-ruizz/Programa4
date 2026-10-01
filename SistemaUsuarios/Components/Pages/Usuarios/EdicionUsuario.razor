@@ -1,0 +1,165 @@
+@page "/usuarios/editar/{Id:int}"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@inject IUsuarioService ServicioUsuarios
+@inject NavigationManager Navegacion
+@inject ILogger<EdicionUsuario> Registro
+
+<PageTitle>Editar usuario</PageTitle>
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="">Inicio</a></li>
+        <li class="breadcrumb-item"><a href="usuarios">Usuarios</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Editar usuario</li>
+    </ol>
+</nav>
+
+@if (cargando)
+{
+    <div class="d-flex align-items-center gap-2 text-muted">
+        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+        <span>Cargando información del usuario…</span>
+    </div>
+}
+else if (usuarioNoEncontrado)
+{
+    <div class="alert alert-warning" role="alert">
+        <h2 class="h5">Usuario no encontrado</h2>
+        <p class="mb-2">El usuario solicitado no existe o fue eliminado del sistema.</p>
+        <a class="btn btn-primary btn-sm" href="usuarios">Volver al listado</a>
+    </div>
+}
+else if (modelo is not null)
+{
+    <div class="mb-3">
+        <h1 class="h3 mb-1">Editar usuario #@modelo.UsuarioId</h1>
+        <p class="text-muted mb-0">Modifique la información requerida y guarde los cambios.</p>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(mensajeError))
+    {
+        <Alerta Tipo="danger" Titulo="No fue posible actualizar al usuario"
+                Mensaje="@mensajeError" Detalles="detallesError" OnCerrar="LimpiarError" />
+    }
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <UsuarioFormulario Modelo="modelo"
+                               NombreFormulario="edicion-usuario"
+                               TextoBotonGuardar="Guardar cambios"
+                               Deshabilitado="guardando"
+                               OnSubmitValido="GuardarAsync"
+                               OnCancelar="Cancelar" />
+        </div>
+    </div>
+}
+
+@code {
+    private UsuarioActualizacionDto? modelo;
+    private IReadOnlyList<string> detallesError = Array.Empty<string>();
+    private string? mensajeError;
+    private bool cargando = true;
+    private bool guardando;
+    private bool usuarioNoEncontrado;
+    private int? idCargado;
+
+    /// <summary>Identificador del usuario recibido desde la ruta.</summary>
+    [Parameter]
+    public int Id { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (idCargado == Id)
+        {
+            return;
+        }
+
+        await CargarUsuarioAsync();
+    }
+
+    private async Task CargarUsuarioAsync()
+    {
+        cargando = true;
+        usuarioNoEncontrado = false;
+
+        try
+        {
+            var usuario = await ServicioUsuarios.ObtenerPorIdAsync(Id);
+
+            if (usuario is null)
+            {
+                usuarioNoEncontrado = true;
+                modelo = null;
+            }
+            else
+            {
+                modelo = new UsuarioActualizacionDto
+                {
+                    UsuarioId = usuario.UsuarioId,
+                    Nombre = usuario.Nombre,
+                    ApellidoPaterno = usuario.ApellidoPaterno,
+                    ApellidoMaterno = usuario.ApellidoMaterno,
+                    Correo = usuario.Correo,
+                    Telefono = usuario.Telefono,
+                    FechaNacimiento = usuario.FechaNacimiento,
+                    TipoUsuarioId = usuario.TipoUsuarioId,
+                    Activo = usuario.Activo
+                };
+            }
+
+            idCargado = Id;
+        }
+        catch (Exception excepcion)
+        {
+            Registro.LogError(excepcion, "Error al cargar el usuario {UsuarioId}.", Id);
+            mensajeError = "Ocurrió un error al cargar la información del usuario.";
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+
+    private async Task GuardarAsync()
+    {
+        if (modelo is null)
+        {
+            return;
+        }
+
+        guardando = true;
+        mensajeError = null;
+        detallesError = Array.Empty<string>();
+
+        try
+        {
+            var operacion = await ServicioUsuarios.ActualizarAsync(modelo);
+
+            if (operacion.Exito)
+            {
+                Navegacion.NavigateTo($"/usuarios?mensaje={Uri.EscapeDataString(operacion.Mensaje)}");
+                return;
+            }
+
+            mensajeError = operacion.Mensaje;
+            detallesError = operacion.TodosLosErrores.ToList();
+        }
+        catch (Exception excepcion)
+        {
+            Registro.LogError(excepcion, "Error inesperado al actualizar el usuario {UsuarioId}.", modelo.UsuarioId);
+            mensajeError = "Ocurrió un error inesperado al actualizar el usuario.";
+        }
+        finally
+        {
+            guardando = false;
+        }
+    }
+
+    private void Cancelar() => Navegacion.NavigateTo("/usuarios");
+
+    private void LimpiarError()
+    {
+        mensajeError = null;
+        detallesError = Array.Empty<string>();
+    }
+}

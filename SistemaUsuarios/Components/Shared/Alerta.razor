@@ -1,0 +1,45 @@
+@* Componente reutilizable para mostrar mensajes de éxito, error, advertencia o información. *@
+@if (!string.IsNullOrWhiteSpace(Mensaje) || Detalles.Count > 0)
+{
+    <div class="alert alert-@Tipo alert-dismissible d-flex align-items-start gap-2 shadow-sm" role="alert">
+        <div class="flex-grow-1">
+            @if (!string.IsNullOrWhiteSpace(Titulo))
+            {
+                <strong class="d-block">@Titulo</strong>
+            }
+            @if (!string.IsNullOrWhiteSpace(Mensaje))
+            {
+                <span>@Mensaje</span>
+            }
+            @if (Detalles.Count > 0)
+            {
+                <ul class="mb-0 mt-1 ps-3">
+                    @foreach (var detalle in Detalles)
+                    {
+                        <li>@detalle</li>
+                    }
+                </ul>
+            }
+        </div>
+        <button type="button" class="btn-close" aria-label="Cerrar" @onclick="Cerrar"></button>
+    </div>
+}
+
+@code {
+    /// <summary>Mensaje principal de la alerta.</summary>
+    [Parameter] public string? Mensaje { get; set; }
+
+    /// <summary>Título opcional de la alerta.</summary>
+    [Parameter] public string? Titulo { get; set; }
+
+    /// <summary>Variante de Bootstrap 5: success, danger, warning o info.</summary>
+    [Parameter] public string Tipo { get; set; } = "info";
+
+    /// <summary>Detalles adicionales (por ejemplo, errores de validación).</summary>
+    [Parameter] public IReadOnlyList<string> Detalles { get; set; } = Array.Empty<string>();
+
+    /// <summary>Evento que se dispara al cerrar la alerta.</summary>
+    [Parameter] public EventCallback OnCerrar { get; set; }
+
+    private Task Cerrar() => OnCerrar.InvokeAsync();
+}

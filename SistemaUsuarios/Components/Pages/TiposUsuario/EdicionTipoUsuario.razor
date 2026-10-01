@@ -1,0 +1,164 @@
+@page "/tipos-usuario/editar/{Id:int}"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@inject ITipoUsuarioService ServicioTiposUsuario
+@inject NavigationManager Navegacion
+@inject ILogger<EdicionTipoUsuario> Registro
+
+<PageTitle>Editar tipo de usuario</PageTitle>
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="">Inicio</a></li>
+        <li class="breadcrumb-item"><a href="tipos-usuario">Tipos de usuario</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Editar tipo de usuario</li>
+    </ol>
+</nav>
+
+@if (cargando)
+{
+    <div class="d-flex align-items-center gap-2 text-muted">
+        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+        <span>Cargando información del tipo de usuario…</span>
+    </div>
+}
+else if (tipoNoEncontrado)
+{
+    <div class="alert alert-warning" role="alert">
+        <h2 class="h5">Tipo de usuario no encontrado</h2>
+        <p class="mb-2">El tipo de usuario solicitado no existe o fue eliminado del sistema.</p>
+        <a class="btn btn-primary btn-sm" href="tipos-usuario">Volver al catálogo</a>
+    </div>
+}
+else if (modelo is not null)
+{
+    <div class="mb-3">
+        <h1 class="h3 mb-1">Editar tipo de usuario #@modelo.TipoUsuarioId</h1>
+        <p class="text-muted mb-0">Modifique la información requerida y guarde los cambios.</p>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(mensajeError))
+    {
+        <Alerta Tipo="danger" Titulo="No fue posible actualizar el tipo de usuario"
+                Mensaje="@mensajeError" Detalles="detallesError" OnCerrar="LimpiarError" />
+    }
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <TipoUsuarioFormulario Modelo="modelo"
+                                   NombreFormulario="edicion-tipo-usuario"
+                                   TextoBotonGuardar="Guardar cambios"
+                                   Deshabilitado="guardando"
+                                   OnSubmitValido="GuardarAsync"
+                                   OnCancelar="Cancelar" />
+        </div>
+    </div>
+}
+
+@code {
+    private TipoUsuarioActualizacionDto? modelo;
+    private IReadOnlyList<string> detallesError = Array.Empty<string>();
+    private string? mensajeError;
+    private bool cargando = true;
+    private bool guardando;
+    private bool tipoNoEncontrado;
+    private int? idCargado;
+
+    /// <summary>Identificador del tipo de usuario recibido desde la ruta.</summary>
+    [Parameter]
+    public int Id { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (idCargado == Id)
+        {
+            return;
+        }
+
+        await CargarTipoUsuarioAsync();
+    }
+
+    private async Task CargarTipoUsuarioAsync()
+    {
+        cargando = true;
+        tipoNoEncontrado = false;
+
+        try
+        {
+            var tipo = await ServicioTiposUsuario.ObtenerPorIdAsync(Id);
+
+            if (tipo is null)
+            {
+                tipoNoEncontrado = true;
+                modelo = null;
+            }
+            else
+            {
+                modelo = new TipoUsuarioActualizacionDto
+                {
+                    TipoUsuarioId = tipo.TipoUsuarioId,
+                    Nombre = tipo.Nombre,
+                    Descripcion = tipo.Descripcion,
+                    Activo = tipo.Activo
+                };
+            }
+
+            idCargado = Id;
+        }
+        catch (Exception excepcion)
+        {
+            Registro.LogError(excepcion, "Error al cargar el tipo de usuario {TipoUsuarioId}.", Id);
+            mensajeError = "Ocurrió un error al cargar la información del tipo de usuario.";
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+
+    private async Task GuardarAsync()
+    {
+        if (modelo is null)
+        {
+            return;
+        }
+
+        guardando = true;
+        mensajeError = null;
+        detallesError = Array.Empty<string>();
+
+        try
+        {
+            var operacion = await ServicioTiposUsuario.ActualizarAsync(modelo);
+
+            if (operacion.Exito)
+            {
+                Navegacion.NavigateTo($"/tipos-usuario?mensaje={Uri.EscapeDataString(operacion.Mensaje)}");
+                return;
+            }
+
+            mensajeError = operacion.Mensaje;
+            detallesError = operacion.TodosLosErrores.ToList();
+        }
+        catch (Exception excepcion)
+        {
+            Registro.LogError(
+                excepcion,
+                "Error inesperado al actualizar el tipo de usuario {TipoUsuarioId}.",
+                modelo.TipoUsuarioId);
+
+            mensajeError = "Ocurrió un error inesperado al actualizar el tipo de usuario.";
+        }
+        finally
+        {
+            guardando = false;
+        }
+    }
+
+    private void Cancelar() => Navegacion.NavigateTo("/tipos-usuario");
+
+    private void LimpiarError()
+    {
+        mensajeError = null;
+        detallesError = Array.Empty<string>();
+    }
+}

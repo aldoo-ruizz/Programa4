@@ -1,0 +1,84 @@
+@page "/tipos-usuario/nuevo"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@inject ITipoUsuarioService ServicioTiposUsuario
+@inject NavigationManager Navegacion
+@inject ILogger<AltaTipoUsuario> Registro
+
+<PageTitle>Nuevo tipo de usuario</PageTitle>
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="">Inicio</a></li>
+        <li class="breadcrumb-item"><a href="tipos-usuario">Tipos de usuario</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Nuevo tipo de usuario</li>
+    </ol>
+</nav>
+
+<div class="mb-3">
+    <h1 class="h3 mb-1">Alta de tipo de usuario</h1>
+    <p class="text-muted mb-0">
+        Registre un nuevo perfil para clasificar a los usuarios. Los campos marcados con * son obligatorios.
+    </p>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(mensajeError))
+{
+    <Alerta Tipo="danger" Titulo="No fue posible registrar el tipo de usuario"
+            Mensaje="@mensajeError" Detalles="detallesError" OnCerrar="LimpiarError" />
+}
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <TipoUsuarioFormulario Modelo="modelo"
+                               NombreFormulario="alta-tipo-usuario"
+                               TextoBotonGuardar="Registrar tipo de usuario"
+                               Deshabilitado="guardando"
+                               OnSubmitValido="GuardarAsync"
+                               OnCancelar="Cancelar" />
+    </div>
+</div>
+
+@code {
+    private readonly TipoUsuarioCreacionDto modelo = new();
+    private IReadOnlyList<string> detallesError = Array.Empty<string>();
+    private string? mensajeError;
+    private bool guardando;
+
+    private async Task GuardarAsync()
+    {
+        guardando = true;
+        mensajeError = null;
+        detallesError = Array.Empty<string>();
+
+        try
+        {
+            var operacion = await ServicioTiposUsuario.CrearAsync(modelo);
+
+            if (operacion.Exito)
+            {
+                Navegacion.NavigateTo($"/tipos-usuario?mensaje={Uri.EscapeDataString(operacion.Mensaje)}");
+                return;
+            }
+
+            mensajeError = operacion.Mensaje;
+            detallesError = operacion.TodosLosErrores.ToList();
+        }
+        catch (Exception excepcion)
+        {
+            Registro.LogError(excepcion, "Error inesperado al registrar un tipo de usuario.");
+            mensajeError = "Ocurrió un error inesperado al registrar el tipo de usuario.";
+        }
+        finally
+        {
+            guardando = false;
+        }
+    }
+
+    private void Cancelar() => Navegacion.NavigateTo("/tipos-usuario");
+
+    private void LimpiarError()
+    {
+        mensajeError = null;
+        detallesError = Array.Empty<string>();
+    }
+}

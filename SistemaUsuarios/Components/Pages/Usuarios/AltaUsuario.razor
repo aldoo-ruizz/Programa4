@@ -1,0 +1,82 @@
+@page "/usuarios/nuevo"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@inject IUsuarioService ServicioUsuarios
+@inject NavigationManager Navegacion
+@inject ILogger<AltaUsuario> Registro
+
+<PageTitle>Nuevo usuario</PageTitle>
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="">Inicio</a></li>
+        <li class="breadcrumb-item"><a href="usuarios">Usuarios</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Nuevo usuario</li>
+    </ol>
+</nav>
+
+<div class="mb-3">
+    <h1 class="h3 mb-1">Alta de usuario</h1>
+    <p class="text-muted mb-0">Capture la información del nuevo usuario. Los campos marcados con * son obligatorios.</p>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(mensajeError))
+{
+    <Alerta Tipo="danger" Titulo="No fue posible registrar al usuario"
+            Mensaje="@mensajeError" Detalles="detallesError" OnCerrar="LimpiarError" />
+}
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <UsuarioFormulario Modelo="modelo"
+                           NombreFormulario="alta-usuario"
+                           TextoBotonGuardar="Registrar usuario"
+                           Deshabilitado="guardando"
+                           OnSubmitValido="GuardarAsync"
+                           OnCancelar="Cancelar" />
+    </div>
+</div>
+
+@code {
+    private readonly UsuarioCreacionDto modelo = new();
+    private IReadOnlyList<string> detallesError = Array.Empty<string>();
+    private string? mensajeError;
+    private bool guardando;
+
+    private async Task GuardarAsync()
+    {
+        guardando = true;
+        mensajeError = null;
+        detallesError = Array.Empty<string>();
+
+        try
+        {
+            var operacion = await ServicioUsuarios.CrearAsync(modelo);
+
+            if (operacion.Exito)
+            {
+                Navegacion.NavigateTo($"/usuarios?mensaje={Uri.EscapeDataString(operacion.Mensaje)}");
+                return;
+            }
+
+            mensajeError = operacion.Mensaje;
+            detallesError = operacion.TodosLosErrores.ToList();
+        }
+        catch (Exception excepcion)
+        {
+            Registro.LogError(excepcion, "Error inesperado al registrar un usuario.");
+            mensajeError = "Ocurrió un error inesperado al registrar el usuario.";
+        }
+        finally
+        {
+            guardando = false;
+        }
+    }
+
+    private void Cancelar() => Navegacion.NavigateTo("/usuarios");
+
+    private void LimpiarError()
+    {
+        mensajeError = null;
+        detallesError = Array.Empty<string>();
+    }
+}

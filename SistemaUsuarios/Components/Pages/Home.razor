@@ -1,0 +1,132 @@
+@page "/"
+@rendermode InteractiveServer
+@inject IUsuarioService ServicioUsuarios
+@inject ITipoUsuarioService ServicioTiposUsuario
+@inject ILogger<Home> Registro
+
+<PageTitle>Inicio</PageTitle>
+
+<div class="mb-4">
+    <h1 class="h3 mb-1">Sistema de Gestión de Usuarios</h1>
+    <p class="text-muted mb-0">
+        Alta, consulta, edición y eliminación de usuarios con Blazor Server,
+        Entity Framework Core y SQLite.
+    </p>
+</div>
+
+@if (cargando)
+{
+    <div class="d-flex align-items-center gap-2 text-muted">
+        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+        <span>Cargando indicadores…</span>
+    </div>
+}
+else
+{
+    @if (!string.IsNullOrWhiteSpace(mensajeError))
+    {
+        <Alerta Tipo="warning" Titulo="Indicadores no disponibles" Mensaje="@mensajeError" OnCerrar="LimpiarError" />
+    }
+
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card shadow-sm h-100 border-primary">
+                <div class="card-body">
+                    <h2 class="h6 text-uppercase text-muted mb-2">Total de usuarios</h2>
+                    <p class="display-6 mb-0">@estadisticas.TotalUsuarios</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card shadow-sm h-100 border-success">
+                <div class="card-body">
+                    <h2 class="h6 text-uppercase text-muted mb-2">Usuarios activos</h2>
+                    <p class="display-6 mb-0 text-success">@estadisticas.UsuariosActivos</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card shadow-sm h-100 border-secondary">
+                <div class="card-body">
+                    <h2 class="h6 text-uppercase text-muted mb-2">Usuarios inactivos</h2>
+                    <p class="display-6 mb-0 text-secondary">@estadisticas.UsuariosInactivos</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card shadow-sm h-100 border-info">
+                <div class="card-body">
+                    <h2 class="h6 text-uppercase text-muted mb-2">Edad promedio</h2>
+                    <p class="display-6 mb-0 text-info">@estadisticas.EdadPromedio.ToString("0.0") años</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <h2 class="h5">Catálogo de tipos de usuario</h2>
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card shadow-sm h-100 border-warning">
+                <div class="card-body">
+                    <h3 class="h6 text-uppercase text-muted mb-2">Tipos registrados</h3>
+                    <p class="display-6 mb-0 text-warning">@totalTiposUsuario</p>
+                    <a class="btn btn-sm btn-outline-warning mt-3" href="tipos-usuario">
+                        Administrar tipos de usuario
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card shadow-sm h-100 border-warning-subtle">
+                <div class="card-body">
+                    <h3 class="h6 text-uppercase text-muted mb-2">Registrar</h3>
+                    <p class="text-muted mb-0">
+                        Cree nuevos perfiles (por ejemplo Docente, Alumno o Invitado) para clasificar
+                        a los usuarios del sistema.
+                    </p>
+                    <a class="btn btn-sm btn-warning mt-3" href="tipos-usuario/nuevo">Nuevo tipo de usuario</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h2 class="h5">Acciones rápidas</h2>
+            <p class="text-muted">Seleccione la operación que desea realizar sobre el padrón de usuarios.</p>
+            <div class="d-flex flex-wrap gap-2">
+                <a class="btn btn-primary" href="usuarios">Consultar usuarios registrados</a>
+                <a class="btn btn-outline-primary" href="usuarios/nuevo">Registrar nuevo usuario</a>
+                <a class="btn btn-outline-secondary" href="tipos-usuario">Ver tipos de usuario</a>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private EstadisticasUsuariosDto estadisticas = new();
+    private int totalTiposUsuario;
+    private bool cargando = true;
+    private string? mensajeError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            estadisticas = await ServicioUsuarios.ObtenerEstadisticasAsync();
+            totalTiposUsuario = await ServicioTiposUsuario.ContarAsync();
+        }
+        catch (Exception excepcion)
+        {
+            Registro.LogError(excepcion, "Error al obtener los indicadores del tablero.");
+            mensajeError = "No fue posible calcular los indicadores del sistema.";
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+
+    private void LimpiarError() => mensajeError = null;
+}
+

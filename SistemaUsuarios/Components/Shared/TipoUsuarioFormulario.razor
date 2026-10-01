@@ -1,0 +1,69 @@
+@* Formulario reutilizable para el alta y la edición de tipos de usuario (capa Shared). *@
+<EditForm Model="@Modelo" OnValidSubmit="@ManejarEnvioValido" FormName="@NombreFormulario">
+    <DataAnnotationsValidator />
+    <ValidationSummary class="alert alert-danger" role="alert" />
+
+    <div class="row g-3">
+        <div class="col-12 col-md-6">
+            <label class="form-label" for="nombre">Nombre del tipo de usuario <span class="text-danger">*</span></label>
+            <InputText id="nombre" class="form-control" placeholder="Ej. Administrador, Docente, Alumno"
+                       @bind-Value="Modelo.Nombre" />
+            <ValidationMessage For="() => Modelo.Nombre" />
+            <div class="form-text">Entre 3 y 60 caracteres. El nombre debe ser único.</div>
+        </div>
+
+        <div class="col-12 col-md-6">
+            <div class="form-check form-switch mt-md-4 pt-md-2">
+                <InputCheckbox id="activo" class="form-check-input" @bind-Value="Modelo.Activo" />
+                <label class="form-check-label" for="activo">Tipo de usuario activo</label>
+            </div>
+        </div>
+
+        <div class="col-12">
+            <label class="form-label" for="descripcion">Descripción</label>
+            <InputTextArea id="descripcion" class="form-control" rows="3"
+                           placeholder="Describa el alcance o los permisos de este tipo de usuario (opcional)"
+                           @bind-Value="Modelo.Descripcion" />
+            <ValidationMessage For="() => Modelo.Descripcion" />
+            <div class="form-text">Máximo 250 caracteres.</div>
+        </div>
+    </div>
+
+    <div class="d-flex flex-wrap gap-2 mt-4">
+        <button type="submit" class="btn btn-primary" disabled="@Deshabilitado">
+            @if (Deshabilitado)
+            {
+                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+            }
+            @TextoBotonGuardar
+        </button>
+        <button type="button" class="btn btn-outline-secondary" disabled="@Deshabilitado" @onclick="Cancelar">
+            Cancelar
+        </button>
+    </div>
+</EditForm>
+
+@code {
+    /// <summary>DTO (alta o edición) que alimenta el formulario.</summary>
+    [Parameter, EditorRequired]
+    public TipoUsuarioBaseDto Modelo { get; set; } = default!;
+
+    /// <summary>Nombre único del formulario requerido por Blazor en el renderizado estático.</summary>
+    [Parameter] public string NombreFormulario { get; set; } = "formulario-tipo-usuario";
+
+    /// <summary>Texto del botón principal.</summary>
+    [Parameter] public string TextoBotonGuardar { get; set; } = "Guardar";
+
+    /// <summary>Indica si el formulario está procesando información.</summary>
+    [Parameter] public bool Deshabilitado { get; set; }
+
+    /// <summary>Evento disparado cuando el formulario es válido y se solicita guardar.</summary>
+    [Parameter] public EventCallback OnSubmitValido { get; set; }
+
+    /// <summary>Evento disparado al cancelar la captura.</summary>
+    [Parameter] public EventCallback OnCancelar { get; set; }
+
+    private Task ManejarEnvioValido() => OnSubmitValido.InvokeAsync();
+
+    private Task Cancelar() => OnCancelar.InvokeAsync();
+}

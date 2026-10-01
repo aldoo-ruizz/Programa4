@@ -1,0 +1,178 @@
+@* Formulario reutilizable para el alta y la edición de usuarios (capa Shared). *@
+@inject ITipoUsuarioService ServicioTiposUsuario
+@inject ILogger<UsuarioFormulario> Registro
+
+<EditForm Model="@Modelo" OnValidSubmit="@ManejarEnvioValido" FormName="@NombreFormulario">
+    <DataAnnotationsValidator />
+    <ValidationSummary class="alert alert-danger" role="alert" />
+
+    <div class="row g-3">
+        <div class="col-12 col-md-6">
+            <label class="form-label" for="nombre">Nombre <span class="text-danger">*</span></label>
+            <InputText id="nombre" class="form-control" placeholder="Nombre(s) del usuario"
+                       @bind-Value="Modelo.Nombre" />
+            <ValidationMessage For="() => Modelo.Nombre" />
+        </div>
+
+        <div class="col-12 col-md-6">
+            <label class="form-label" for="apellidoPaterno">Apellido paterno <span class="text-danger">*</span></label>
+            <InputText id="apellidoPaterno" class="form-control" placeholder="Apellido paterno"
+                       @bind-Value="Modelo.ApellidoPaterno" />
+            <ValidationMessage For="() => Modelo.ApellidoPaterno" />
+        </div>
+
+        <div class="col-12 col-md-6">
+            <label class="form-label" for="apellidoMaterno">Apellido materno</label>
+            <InputText id="apellidoMaterno" class="form-control" placeholder="Apellido materno (opcional)"
+                       @bind-Value="Modelo.ApellidoMaterno" />
+            <ValidationMessage For="() => Modelo.ApellidoMaterno" />
+        </div>
+
+        <div class="col-12 col-md-6">
+            <label class="form-label" for="correo">Correo electrónico <span class="text-danger">*</span></label>
+            <InputText id="correo" type="email" class="form-control" placeholder="usuario@dominio.com"
+                       @bind-Value="Modelo.Correo" />
+            <ValidationMessage For="() => Modelo.Correo" />
+        </div>
+
+        <div class="col-12 col-md-6">
+            <label class="form-label" for="telefono">Teléfono</label>
+            <InputText id="telefono" class="form-control" inputmode="numeric" maxlength="10"
+                       placeholder="10 dígitos (opcional)" @bind-Value="Modelo.Telefono" />
+            <ValidationMessage For="() => Modelo.Telefono" />
+        </div>
+
+        <div class="col-12 col-md-6">
+            <label class="form-label" for="fechaNacimiento">
+                Fecha de nacimiento <span class="text-danger">*</span>
+            </label>
+            <InputDate id="fechaNacimiento" class="form-control"
+                       min="@FechaMinima" max="@FechaMaxima"
+                       @bind-Value="Modelo.FechaNacimiento" />
+            <ValidationMessage For="() => Modelo.FechaNacimiento" />
+            <div class="form-text">No se permiten fechas futuras ni anteriores a 1900.</div>
+        </div>
+
+        <div class="col-12 col-md-6">
+            <label class="form-label" for="tipoUsuario">Tipo de usuario <span class="text-danger">*</span></label>
+            @if (!string.IsNullOrWhiteSpace(mensajeErrorTipos))
+            {
+                <div class="alert alert-warning py-2" role="alert">
+                    <span>@mensajeErrorTipos</span>
+                    <button type="button" class="btn btn-sm btn-outline-warning ms-2" @onclick="CargarTiposAsync">
+                        Reintentar
+                    </button>
+                </div>
+            }
+            else if (cargandoTipos)
+            {
+                <div class="form-control d-flex align-items-center gap-2 text-muted">
+                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                    <span>Cargando tipos de usuario…</span>
+                </div>
+            }
+            else
+            {
+                <InputSelect id="tipoUsuario" class="form-select" @bind-Value="Modelo.TipoUsuarioId">
+                    <option value="">-- Seleccione un tipo de usuario --</option>
+                    @foreach (var tipo in tiposUsuario)
+                    {
+                        <option value="@tipo.TipoUsuarioId">
+                            @tipo.Nombre@(tipo.Activo ? string.Empty : " (inactivo)")
+                        </option>
+                    }
+                </InputSelect>
+                <ValidationMessage For="() => Modelo.TipoUsuarioId" />
+                <div class="form-text">
+                    Clasifique al usuario dentro del catálogo de tipos.
+                    <a href="tipos-usuario/nuevo" target="_blank">Registrar un nuevo tipo</a>.
+                </div>
+            }
+        </div>
+
+        <div class="col-12">
+            <div class="form-check form-switch">
+                <InputCheckbox id="activo" class="form-check-input" @bind-Value="Modelo.Activo" />
+                <label class="form-check-label" for="activo">Usuario activo</label>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex flex-wrap gap-2 mt-4">
+        <button type="submit" class="btn btn-primary" disabled="@Deshabilitado">
+            @if (Deshabilitado)
+            {
+                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+            }
+            @TextoBotonGuardar
+        </button>
+        <button type="button" class="btn btn-outline-secondary" disabled="@Deshabilitado" @onclick="Cancelar">
+            Cancelar
+        </button>
+    </div>
+</EditForm>
+
+@code {
+    /// <summary>DTO (alta o edición) que alimenta el formulario.</summary>
+    [Parameter, EditorRequired]
+    public UsuarioBaseDto Modelo { get; set; } = default!;
+
+    /// <summary>Nombre único del formulario requerido por Blazor en el renderizado estático.</summary>
+    [Parameter] public string NombreFormulario { get; set; } = "formulario-usuario";
+
+    /// <summary>Texto del botón principal.</summary>
+    [Parameter] public string TextoBotonGuardar { get; set; } = "Guardar";
+
+    /// <summary>Indica si el formulario está procesando información.</summary>
+    [Parameter] public bool Deshabilitado { get; set; }
+
+    /// <summary>Evento disparado cuando el formulario es válido y se solicita guardar.</summary>
+    [Parameter] public EventCallback OnSubmitValido { get; set; }
+
+    /// <summary>Evento disparado al cancelar la captura.</summary>
+    [Parameter] public EventCallback OnCancelar { get; set; }
+
+    private string FechaMinima { get; } = new DateTime(1900, 1, 1).ToString("yyyy-MM-dd");
+
+    private string FechaMaxima { get; } = DateTime.Today.ToString("yyyy-MM-dd");
+
+    /// <summary>Tipos de usuario disponibles para clasificar al usuario.</summary>
+    private IReadOnlyList<TipoUsuarioDto> tiposUsuario = Array.Empty<TipoUsuarioDto>();
+
+    private bool cargandoTipos = true;
+    private string? mensajeErrorTipos;
+
+    protected override Task OnInitializedAsync() => CargarTiposAsync();
+
+    private async Task CargarTiposAsync()
+    {
+        cargandoTipos = true;
+        mensajeErrorTipos = null;
+
+        try
+        {
+            var listado = await ServicioTiposUsuario.ObtenerListadoAsync(
+                new TipoUsuarioFiltroDto { TamanoPagina = 100 });
+
+            tiposUsuario = listado.Elementos
+                .OrderByDescending(tipo => tipo.Activo)
+                .ThenBy(tipo => tipo.Nombre)
+                .ToList();
+        }
+        catch (Exception excepcion)
+        {
+            Registro.LogError(excepcion, "Error al cargar el catálogo de tipos de usuario en el formulario.");
+            tiposUsuario = Array.Empty<TipoUsuarioDto>();
+            mensajeErrorTipos = "No fue posible cargar el catálogo de tipos de usuario. "
+                + "Verifique la conexión con la base de datos e intente de nuevo.";
+        }
+        finally
+        {
+            cargandoTipos = false;
+        }
+    }
+
+    private Task ManejarEnvioValido() => OnSubmitValido.InvokeAsync();
+
+    private Task Cancelar() => OnCancelar.InvokeAsync();
+}

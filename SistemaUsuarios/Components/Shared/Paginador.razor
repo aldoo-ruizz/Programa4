@@ -1,0 +1,78 @@
+@* Controles de paginación reutilizables para los listados. *@
+<nav class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3"
+     aria-label="Paginación de resultados">
+    <span class="text-muted small">
+        Página @Pagina de @(TotalPaginas == 0 ? 1 : TotalPaginas) · @TotalRegistros registro(s)
+    </span>
+
+    @if (TotalPaginas > 1)
+    {
+        <ul class="pagination pagination-sm mb-0">
+            <li class="page-item @(Pagina <= 1 ? "disabled" : string.Empty)">
+                <button type="button" class="page-link" @onclick="() => CambiarAsync(Pagina - 1)"
+                        disabled="@(Pagina <= 1)">
+                    Anterior
+                </button>
+            </li>
+
+            @foreach (var numero in PaginasVisibles)
+            {
+                <li class="page-item @(numero == Pagina ? "active" : string.Empty)">
+                    <button type="button" class="page-link" @onclick="() => CambiarAsync(numero)">@numero</button>
+                </li>
+            }
+
+            <li class="page-item @(Pagina >= TotalPaginas ? "disabled" : string.Empty)">
+                <button type="button" class="page-link" @onclick="() => CambiarAsync(Pagina + 1)"
+                        disabled="@(Pagina >= TotalPaginas)">
+                    Siguiente
+                </button>
+            </li>
+        </ul>
+    }
+</nav>
+
+@code {
+    private const int Ventana = 2;
+
+    /// <summary>Página actualmente mostrada.</summary>
+    [Parameter] public int Pagina { get; set; } = 1;
+
+    /// <summary>Total de páginas disponibles.</summary>
+    [Parameter] public int TotalPaginas { get; set; } = 1;
+
+    /// <summary>Total de registros que cumplen el filtro.</summary>
+    [Parameter] public int TotalRegistros { get; set; }
+
+    /// <summary>Evento que notifica el cambio de página solicitado.</summary>
+    [Parameter] public EventCallback<int> OnCambiarPagina { get; set; }
+
+    private IEnumerable<int> PaginasVisibles
+    {
+        get
+        {
+            if (TotalPaginas <= 0)
+            {
+                yield break;
+            }
+
+            var inicial = Math.Max(1, Pagina - Ventana);
+            var final = Math.Min(TotalPaginas, Pagina + Ventana);
+
+            for (var numero = inicial; numero <= final; numero++)
+            {
+                yield return numero;
+            }
+        }
+    }
+
+    private Task CambiarAsync(int numero)
+    {
+        if (numero < 1 || numero > TotalPaginas || numero == Pagina)
+        {
+            return Task.CompletedTask;
+        }
+
+        return OnCambiarPagina.InvokeAsync(numero);
+    }
+}

@@ -1,0 +1,63 @@
+@* Ventana modal de confirmación (sin dependencia de JavaScript). *@
+@if (Visible)
+{
+    <div class="modal fade show d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="titulo-modal">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="titulo-modal">@Titulo</h5>
+                    <button type="button" class="btn-close" aria-label="Cerrar" @onclick="Cancelar"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-0">@Mensaje</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" @onclick="Cancelar" disabled="@Procesando">
+                        @TextoCancelar
+                    </button>
+                    <button type="button" class="btn @VarianteConfirmar" @onclick="Confirmar" disabled="@Procesando">
+                        @if (Procesando)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        }
+                        @TextoConfirmar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+@code {
+    /// <summary>Indica si la ventana modal debe mostrarse.</summary>
+    [Parameter] public bool Visible { get; set; }
+
+    /// <summary>Título de la ventana modal.</summary>
+    [Parameter] public string Titulo { get; set; } = "Confirmación";
+
+    /// <summary>Mensaje de confirmación.</summary>
+    [Parameter] public string Mensaje { get; set; } = string.Empty;
+
+    /// <summary>Texto del botón de confirmación.</summary>
+    [Parameter] public string TextoConfirmar { get; set; } = "Aceptar";
+
+    /// <summary>Texto del botón de cancelación.</summary>
+    [Parameter] public string TextoCancelar { get; set; } = "Cancelar";
+
+    /// <summary>Variante de Bootstrap 5 aplicada al botón de confirmación.</summary>
+    [Parameter] public string VarianteConfirmar { get; set; } = "btn-danger";
+
+    /// <summary>Indica si hay una operación en proceso.</summary>
+    [Parameter] public bool Procesando { get; set; }
+
+    /// <summary>Evento disparado al confirmar la acción.</summary>
+    [Parameter] public EventCallback OnConfirmar { get; set; }
+
+    /// <summary>Evento disparado al cancelar la acción.</summary>
+    [Parameter] public EventCallback OnCancelar { get; set; }
+
+    private Task Confirmar() => OnConfirmar.InvokeAsync();
+
+    private Task Cancelar() => OnCancelar.InvokeAsync();
+}
